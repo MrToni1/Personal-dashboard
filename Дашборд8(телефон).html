@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Дашборд · Арти</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 📱 PWA: иконка + режим приложения при добавлении на главный экран -->
+<meta name="theme-color" content="#070b1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Дашборд Арти">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐹</text></svg>">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Дашборд Арти","short_name":"Арти","start_url":"./","display":"standalone","background_color":"%23070b1f","theme_color":"%23070b1f"}'>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh; color: #eef2f7;
+    padding: 28px; display: flex; flex-direction: column; align-items: center;
+    overflow-x: hidden; position: relative;
+  }
+  body.morning { --c1:#2b1055; --c2:#7b3f8f; --c3:#e96443; }
+  body.day     { --c1:#1a6ea0; --c2:#2f9dbd; --c3:#67b26f; }
+  body.evening { --c1:#3d2b56; --c2:#c06c84; --c3:#f6a34f; }
+  body.night   { --c1:#070b1f; --c2:#131735; --c3:#26264a; }
+  body.rain  { --c1:#2a3944; --c2:#456173; --c3:#5f7c8c; }
+  body.snow  { --c1:#4a5f6f; --c2:#7d9aa8; --c3:#b8d4de; }
+  body.cloud { --c1:#333d4d; --c2:#4f5d6e; --c3:#6e7d8c; }
+  body.storm { --c1:#14141f; --c2:#262033; --c3:#3d2f4e; }
+  body {
+    background: linear-gradient(160deg, var(--c1), var(--c2) 50%, var(--c3));
+    background-size: 300% 300%;
+    animation: flow 14s ease-in-out infinite;
+  }
+  @keyframes flow {
+    0% { background-position: 0% 30%; } 50% { background-position: 100% 70%; } 100% { background-position: 0% 30%; }
+  }
+
+  #skyFX { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  #orb { position: fixed; font-size: 58px; top: 5%; left: 8%; z-index: 0; pointer-events: none;
+    filter: drop-shadow(0 0 22px rgba(255,220,120,.55)); transition: opacity 1s; }
+  .star { position: absolute; border-radius: 50%; background: #fff; animation: twinkle 3s infinite; }
+  @keyframes twinkle { 0%,100%{opacity:.15} 50%{opacity:.9} }
+  .drop { position: absolute; width: 2px; height: 15px; background: rgba(200,225,255,.4); border-radius: 2px; animation: fall linear infinite; }
+  @keyframes fall { from{transform:translateY(-5vh)} to{transform:translateY(105vh)} }
+  .flake { position: absolute; color:#fff; animation: snowfall linear infinite; }
+  @keyframes snowfall { from{transform:translateY(-5vh) rotate(0)} to{transform:translateY(105vh) rotate(360deg)} }
+  .cloud-fx { position: absolute; opacity:.14; animation: drift linear infinite; }
+  @keyframes drift { from{transform:translateX(-15vw)} to{transform:translateX(115vw)} }
+
+  .wrap { width: 100%; max-width: 1200px; position: relative; z-index: 1; }
+  .header { text-align: center; margin-bottom: 26px; }
+  .clock { font-size: 56px; font-weight: 700; letter-spacing: 2px;
+    background: linear-gradient(90deg, #fff, #a8d8ea);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .date { color: #cfe3ec; margin-top: 2px; text-transform: capitalize; }
+  h1 { font-weight: 300; font-size: 20px; margin-top: 8px; color: #ddebf2; }
+  .updated { display: inline-block; margin-top: 10px; font-size: 12px; color: #b8ccd4;
+    background: rgba(255,255,255,.1); padding: 4px 12px; border-radius: 20px; }
+
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .span2 { grid-column: span 2; }
+  @media (max-width: 700px) { .span2 { grid-column: span 1; } }
+  .card { background: rgba(20,30,45,.55); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 20px; padding: 22px; backdrop-filter: blur(14px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.3); transition: transform .2s; }
+  .card:hover { transform: translateY(-3px); }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;
+    color: #cde9f2; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .big { font-size: 44px; font-weight: 700; }
+  .wicon { font-size: 50px; float: right; margin-top: -10px; }
+  .sub { color: #c2d6de; font-size: 14px; margin-top: 6px; }
+  .row { display: flex; justify-content: space-between; padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,.1); }
+  .row:last-child { border-bottom: none; }
+
+  .clickable { cursor: pointer; }
+  .hint { font-size: 11px; color: #9cc5d4; background: rgba(255,255,255,.1);
+    padding: 3px 10px; border-radius: 12px; margin-left: auto; transition: transform .3s; }
+  .open-state .hint { transform: rotate(180deg); }
+
+  .detail { grid-column: 1 / -1; max-height: 0; overflow: hidden; opacity: 0; padding: 0 22px;
+    transition: max-height .5s ease, opacity .4s ease, padding .4s ease; }
+  .detail.open { max-height: 1400px; opacity: 1; padding: 22px; }
+  .hours-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; }
+  .hour { min-width: 76px; text-align: center; background: rgba(255,255,255,.07);
+    border-radius: 14px; padding: 12px 4px; border: 1px solid rgba(255,255,255,.08); }
+  .hour.now { background: rgba(126,232,250,.18); border-color: rgba(126,232,250,.5); }
+  .hour .ht { font-size: 12px; color: #bcd8e2; }
+  .hour .hw { font-size: 24px; margin: 6px 0; }
+  .hour .hT { font-weight: 700; font-size: 16px; }
+  .hour .hp { font-size: 11px; color: #8fd0e8; margin-top: 4px; }
+
+  .forecast { display: flex; text-align: center; gap: 8px; }
+  .fday { background: rgba(255,255,255,.07); border-radius: 14px; padding: 12px 6px; flex: 1; }
+  .fday .fw { font-size: 26px; margin: 6px 0; }
+  .fday .ft { font-weight: 600; }
+  .fday .fn { color: #a8c0ca; font-size: 12px; }
+
+  .chat-row, .todo { display: flex; gap: 8px; margin-top: 4px; }
+  .chat-row input, .todo input, .note-add { flex: 1; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3); color: #fff;
+    outline: none; font-size: 14px; }
+  .chat-row button, .todo button { padding: 10px 16px; border: none; border-radius: 10px;
+    cursor: pointer; background: linear-gradient(90deg, #38b6c9, #5aa9e6); color: #fff; font-weight: 600; }
+  .todo-item { display: flex; align-items: center; gap: 10px; padding: 9px 4px;
+    border-bottom: 1px solid rgba(255,255,255,.1); font-size: 15px; }
+  .todo-item.done span { text-decoration: line-through; color: #8fa8b2; }
+  .todo-item input { width: 17px; height: 17px; accent-color: #38b6c9; cursor: pointer; }
+  .del { margin-left: auto; cursor: pointer; color: #f0a0a0; border: none; background: none; font-size: 16px; }
+
+  .note-area { display: flex; flex-wrap: wrap; gap: 10px; }
+  .sticker { width: calc(50% - 5px); min-height: 85px; border-radius: 4px; padding: 10px 12px;
+    font-size: 14px; color: #333; box-shadow: 0 3px 8px rgba(0,0,0,.25);
+    transform: rotate(var(--rot)); white-space: pre-wrap; word-break: break-word; position: relative; }
+  .sticker .nx { position: absolute; top: 4px; right: 8px; cursor: pointer; opacity: .5; }
+  .sticker .nx:hover { opacity: 1; }
+  .note-add { margin-top: 10px; border-style: dashed; }
+
+  .countdown { display: flex; gap: 10px; }
+  .cd-box { flex: 1; text-align: center; background: rgba(255,255,255,.07); border-radius: 14px; padding: 12px 4px; }
+  .cd-box .n { font-size: 26px; font-weight: 700; color: #7ee8fa; }
+  .cd-box .l { font-size: 11px; color: #b9d2da; }
+
+  .quote { font-style: italic; line-height: 1.6; font-size: 15px; }
+  .qmark { font-size: 34px; color: #7ee8fa; line-height: .5; }
+
+  /* 🐹 Тишка */
+  .hamster-card h2 .tip { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .hamster-stage { display: flex; align-items: center; gap: 14px; }
+  #hamster { font-size: 58px; line-height: 1; cursor: pointer; user-select: none;
+    animation: idle 3.5s ease-in-out infinite; }
+  @keyframes idle { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(.93)} }
+  #hamster.eat { animation: munch .3s ease-in-out 4; }
+  @keyframes munch { 50% { transform: scale(1.12,.85); } }
+  #hamster.dance { animation: dance .5s ease-in-out 4; }
+  @keyframes dance { 25%{transform:rotate(-12deg) scale(1.08)} 75%{transform:rotate(12deg) scale(1.08)} }
+  .moods { display: flex; gap: 6px; margin: 10px 0 4px; flex-wrap: wrap; }
+  .moods button { padding: 6px 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.08); color: #dff3fa; cursor: pointer; font-size: 13px; }
+  .moods button:hover { background: rgba(255,255,255,.2); }
+  .bubble { flex: 1; background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22);
+    border-radius: 16px 16px 4px 16px; padding: 10px 14px; font-size: 14px; min-height: 44px;
+    line-height: 1.5; color: #f2f8fb; }
+  .bubble b { color: #ffe28a; }
+  .pet-count { font-size: 12px; color: #aaccdd; margin-top: 8px; }
+  .mascot-log { max-height: 170px; overflow-y: auto; margin-top: 10px; font-size: 13px; }
+  .mlog-row { padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,.08); }
+  .mlog-row b { color: #ffd97a; }
+
+  button.refresh { margin: 22px auto 0; display: block; padding: 10px 26px; border: none;
+    border-radius: 24px; background: linear-gradient(90deg, #38b6c9, #5aa9e6);
+    color: #fff; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(56,182,201,.35); }
+  button.refresh:hover { filter: brightness(1.15); }
+  .error { color: #ffb0b0; font-size: 13px; }
+</style>
+</head>
+<body class="night">
+<div id="skyFX"></div>
+<div id="orb" style="opacity:0">☀️</div>
+
+<div class="wrap">
+  <div class="header">
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+    <h1>🏡 Персональный дашборд · пгт Арти</h1>
+    <div class="updated" id="updated">загрузка…</div>
+  </div>
+
+  <div class="grid">
+    <div class="card clickable" id="weatherCard" onclick="toggleDetail()">
+      <h2>🌤 Погода — пгт Арти <span class="hint">▾</span></h2>
+      <div class="wicon" id="wicon">🌡</div>
+      <div class="big" id="temp">…</div>
+      <div class="sub" id="wdesc">загрузка…</div>
+      <div class="sub" id="wextra"></div>
+    </div>
+
+    <div class="card span2">
+      <h2>📅 Прогноз на 3 дня</h2>
+      <div class="forecast" id="forecast">загрузка…</div>
+    </div>
+
+    <div class="card detail" id="detail">
+      <h2>⏰ Почасовой прогноз на 24 часа</h2>
+      <div class="hours-scroll" id="hours"></div>
+      <div class="sub" id="detailSummary"></div>
+    </div>
+
+    <div class="card span2 hamster-card">
+      <h2>🐹 Тишка · хомяк-компаньон <span class="tip">кликни по хоме 🌰</span></h2>
+      <div class="hamster-stage">
+        <div id="hamster">🐹</div>
+        <div class="bubble" id="bubble">Пи-пи! Я Тишка. Погладь меня, спроси о чём-нибудь или нажми кнопочку!</div>
+      </div>
+      <div class="pet-count" id="petCount">❤️ Поглаживаний: 0 · 🌾 Сытость: 50%</div>
+      <div class="moods">
+        <button onclick="hamsterAction('joke')">😄 Анекдот</button>
+        <button onclick="hamsterAction('fact')">🧠 Факт</button>
+        <button onclick="hamsterAction('compliment')">💐 Комплимент</button>
+        <button onclick="hamsterAction('game')">🎲 Игра в число</button>
+        <button onclick="hamsterAction('coin')">🪙 Монетка</button>
+        <button onclick="hamsterAction('advice')">💡 Совет</button>
+        <button onclick="hamsterAction('feed')">🌰 Покормить</button>
+      </div>
+      <div class="chat-row">
+        <input id="mascotInput" placeholder="Спроси у Тишки что-нибудь…">
+        <button onclick="askMascot()">💬</button>
+      </div>
+      <div class="mascot-log" id="mascotLog"></div>
+    </div>
+
+    <div class="card">
+      <h2>🗒 Заметки</h2>
+      <div class="note-area" id="notes"></div>
+      <input class="note-add" id="noteInput" placeholder="Новая заметка + Enter…">
+    </div>
+
+    <div class="card">
+      <h2>⏳ Счётчики</h2>
+      <div class="countdown">
+        <div class="cd-box"><div class="n" id="cdNat">…</div><div class="l">до НГ</div></div>
+        <div class="cd-box"><div class="n" id="cdPay">…</div><div class="l">до зарплаты</div></div>
+        <div class="cd-box"><div class="n" id="cdWeekend">…</div><div class="l">до выходных</div></div>
+      </div>
+      <div class="sub" id="cdMessage"></div>
+    </div>
+
+    <div class="card">
+      <h2>💱 Курс валют (ЦБ РФ)</h2>
+      <div id="rates">…</div>
+    </div>
+
+    <div class="card">
+      <h2>✅ Мои дела</h2>
+      <div class="todo">
+        <input id="taskInput" placeholder="Новая задача…">
+        <button onclick="addTask()">＋</button>
+      </div>
+      <div id="tasks"></div>
+    </div>
+
+    <div class="card">
+      <h2>💬 Цитата дня</h2>
+      <div class="qmark">«</div>
+      <div class="quote" id="quote"></div>
+      <div class="sub" id="qauthor"></div>
+    </div>
+  </div>
+
+  <button class="refresh" onclick="loadAll()">🔄 Обновить сейчас</button>
+</div>
+
+<script>
+'use strict';
+const LAT = 56.3989, LON = 57.5817;
+
+const QUOTES = [
+  ['Лучший способ предсказать будущее — создать его.', 'Алан Кэй'],
+  ['Сначала реши задачу. Потом напиши код.', 'Джон Джонсон'],
+  ['Не бойся совершенства — тебе его не видать.', 'Сальвадор Дали'],
+  ['Простота — высшая степень изящества.', 'Леонардо да Винчи'],
+  ['Дорогу осилит идущий.', 'Пословица'],
+  ['Утро вечера мудренее.', 'Пословица'],
+  ['Делу время, потехе час.', 'Пословица'],
+  ['Глаза боятся, а руки делают.', 'Пословица'],
+  ['Терпение и труд всё перетрут.', 'Пословица'],
+  ['The best way out is always through.', 'Роберт Фрост']
+];
+const WCODES = {
+  0:['Ясно','☀️'],1:['Преим. ясно','🌤'],2:['Облачно','⛅'],3:['Пасмурно','☁️'],
+  45:['Туман','🌫'],48:['Туман','🌫'],
+  51:['Морось','🌦'],53:['Морось','🌦'],55:['Морось','🌦'],
+  61:['Дождь','🌧'],63:['Дождь','🌧'],65:['Ливень','🌧'],
+  71:['Снег','❄️'],73:['Снег','❄️'],75:['Снегопад','❄️'],77:['Снежные зёрна','🌨'],
+  80:['Ливни','🌦'],81:['Ливни','🌦'],82:['Сильные ливни','⛈'],
+  85:['Снежные ливни','🌨'],86:['Снежные ливни','🌨'],
+  95:['Гроза','⛈'],96:['Гроза с градом','⛈'],99:['Гроза с градом','⛈']
+};
+const esc = s => String(s).replace(/</g,'&lt;');
+const rnd = n => Math.floor(Math.random() * n);
+const pick = arr => arr[rnd(arr.length)];
+function timeAgo(ts){ const m = Math.floor((Date.now()-ts)/60000); return m<1 ? 'только что' : m+' мин назад'; }
+function safeRound(x){ return (x == null || isNaN(x)) ? '—' : Math.round(x); }
+
+/* ============ 🎨 Фон ============ */
+function baseTheme(h){
+  if (h >= 6 && h < 10) return 'morning';
+  if (h >= 10 && h < 17) return 'day';
+  if (h >= 17 && h < 22) return 'evening';
+  return 'night';
+}
+let fxStorm = null;
+function applyTheme(w){
+  let theme = baseTheme(new Date().getHours());
+  let fx = 'none', isDay = true;
+  if (w){
+    isDay = w.current.is_day === 1;
+    const code = w.current.weather_code;
+    if (code <= 1) fx = isDay ? 'sun' : 'stars';
+    else if (code <= 3 || code === 45 || code === 48) fx = 'clouds';
+    else if ((code >= 71 && code <= 77) || code === 85 || code === 86){ fx = 'snow'; theme = 'snow'; }
+    else if (code >= 95){ fx = 'storm'; theme = 'storm'; }
+    else if (code >= 51){ fx = 'rain'; theme = 'rain'; }
+  } else fx = 'stars';
+  if (!isDay && theme === 'day') theme = 'night';
+  document.body.className = theme;
+  document.getElementById('orb').textContent = isDay ? '☀️' : '🌙';
+  paintFX(fx, isDay);
+}
+function paintFX(fx, isDay){
+  const sky = document.getElementById('skyFX');
+  const orb = document.getElementById('orb');
+  sky.innerHTML = '';
+  if (fxStorm){ clearInterval(fxStorm); fxStorm = null; }
+  document.body.style.backgroundImage = '';
+  if (fx === 'stars'){
+    orb.style.opacity = .6;
+    for (let i = 0; i < 80; i++){
+      const s = document.createElement('div');
+      s.className = 'star';
+      const sz = rnd(3)+1;
+      s.style.cssText = 'left:'+rnd(100)+'vw;top:'+rnd(70)+'vh;width:'+sz+'px;height:'+sz+'px;animation-delay:'+(rnd(30)/10)+'s';
+      sky.appendChild(s);
+    }
+  } else if (fx === 'sun'){ orb.style.opacity = .85; }
+  else if (fx === 'clouds'){
+    orb.style.opacity = .45;
+    for (let i = 0; i < 6; i++){
+      const c = document.createElement('div');
+      c.className = 'cloud-fx'; c.textContent = '☁️';
+      c.style.cssText = 'top:'+rnd(50)+'%;font-size:'+(rnd(60)+40)+'px;animation-duration:'+(rnd(40)+35)+'s;animation-delay:-'+rnd(50)+'s';
+      sky.appendChild(c);
+    }
+  } else if (fx === 'rain' || fx === 'storm'){
+    orb.style.opacity = 0;
+    for (let i = 0; i < 70; i++){
+      const d = document.createElement('div');
+      d.className = 'drop';
+      d.style.cssText = 'left:'+rnd(100)+'vw;animation-duration:'+(rnd(4)+4)+'s;animation-delay:'+(rnd(50)/10)+'s';
+      sky.appendChild(d);
+    }
+    if (fx === 'storm'){
+      fxStorm = setInterval(function(){
+        document.body.style.backgroundImage = 'radial-gradient(circle at '+rnd(80)+'% '+rnd(40)+'%, rgba(255,255,255,.3), transparent 45%), linear-gradient(160deg, var(--c1), var(--c2) 50%, var(--c3))';
+        setTimeout(function(){ document.body.style.backgroundImage = ''; }, 130);
+      }, 8000);
+    }
+  } else if (fx === 'snow'){
+    orb.style.opacity = 0;
+    for (let i = 0; i < 50; i++){
+      const f = document.createElement('div');
+      f.className = 'flake'; f.textContent = '❄';
+      f.style.cssText = 'left:'+rnd(100)+'vw;font-size:'+(rnd(14)+8)+'px;animation-duration:'+(rnd(8)+6)+'s;animation-delay:'+(rnd(60)/10)+'s';
+      sky.appendChild(f);
+    }
+  } else { orb.style.opacity = 0; }
+}
+
+/* ============ 🕐 Часы ============ */
+function tick(){
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('date').textContent =
+    n.toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'});
+}
+setInterval(tick, 1000); tick();
+
+/* ============ 🌤 Погода ============ */
+let lastWeather = null;
+
+/* 📴 Офлайн-кэш погоды */
+function cacheWeather(){
+  try { localStorage.setItem('arti_cache_weather', JSON.stringify({data: lastWeather, time: Date.now()})); } catch(e){}
+}
+function showCachedWeather(){
+  try {
+    const c = JSON.parse(localStorage.getItem('arti_cache_weather') || 'null');
+    if (c && c.data){
+      lastWeather = c.data;
+      const c0 = c.data.current;
+      const wc0 = WCODES[c0.weather_code] || ['—','🌡'];
+      document.getElementById('wicon').textContent = wc0[1];
+      document.getElementById('temp').textContent = safeRound(c0.temperature_2m) + '°C';
+      document.getElementById('wdesc').textContent = wc0[0] + (c0.is_day ? '' : ' 🌙') + ' (офлайн-кэш)';
+      document.getElementById('wextra').textContent =
+        'Ощущается ' + safeRound(c0.apparent_temperature) + '° · 💧 ' + c0.relative_humidity_2m + '% · 💨 ' + safeRound(c0.wind_speed_10m) + ' км/ч';
+      applyTheme(c.data);
+      return true;
+    }
+  } catch(e){}
+  return false;
+}
+
+async function loadWeather(){
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+      '&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day' +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min' +
+      '&hourly=temperature_2m,weather_code,precipitation_probability&timezone=auto&forecast_days=3';
+    const d = await (await fetch(url)).json();
+    lastWeather = d;
+    const c = d.current;
+    const wc = WCODES[c.weather_code] || ['—','🌡'];
+    document.getElementById('wicon').textContent = wc[1];
+    document.getElementById('temp').textContent = safeRound(c.temperature_2m) + '°C';
+    document.getElementById('wdesc').textContent = wc[0] + (c.is_day ? '' : ' 🌙');
+    document.getElementById('wextra').textContent =
+      'Ощущается ' + safeRound(c.apparent_temperature) + '° · 💧 ' + c.relative_humidity_2m + '% · 💨 ' + safeRound(c.wind_speed_10m) + ' км/ч';
+
+    let f = '';
+    for (let i = 0; i < 3; i++){
+      if (!d.daily || !d.daily.time[i]) continue;
+      const dt = new Date(d.daily.time[i]).toLocaleDateString('ru-RU', {weekday:'short', day:'numeric'});
+      f += '<div class="fday"><div>' + (i===0 ? 'Сегодня' : dt) + '</div>' +
+           '<div class="fw">' + (WCODES[d.daily.weather_code[i]] || ['—','🌡'])[1] + '</div>' +
+           '<div class="ft">' + safeRound(d.daily.temperature_2m_max[i]) + '°</div>' +
+           '<div class="fn">' + safeRound(d.daily.temperature_2m_min[i]) + '°</div></div>';
+    }
+    document.getElementById('forecast').innerHTML = f;
+
+    const now = Date.now();
+    let idx = d.hourly.time.findIndex(t => new Date(t).getTime() >= now - 3600000);
+    if (idx < 0) idx = 0;
+    const end = Math.min(idx + 24, d.hourly.time.length);
+    let hh = '';
+    for (let i = idx; i < end; i++){
+      const isNow = i === idx;
+      const ht = isNow ? 'сейчас' : new Date(d.hourly.time[i]).toLocaleTimeString('ru-RU', {hour:'2-digit'}) + ':00';
+      hh += '<div class="hour' + (isNow ? ' now' : '') + '">' +
+        '<div class="ht">' + ht + '</div>' +
+        '<div class="hw">' + (WCODES[d.hourly.weather_code[i]] || ['—','🌡'])[1] + '</div>' +
+        '<div class="hT">' + safeRound(d.hourly.temperature_2m[i]) + '°</div>' +
+        '<div class="hp">💧 ' + (d.hourly.precipitation_probability[i] == null ? 0 : d.hourly.precipitation_probability[i]) + '%</div></div>';
+    }
+    document.getElementById('hours').innerHTML = hh;
+
+    const sliceT = d.hourly.temperature_2m.slice(idx, end);
+    const maxT = Math.max.apply(null, sliceT), maxI = sliceT.indexOf(maxT);
+    const sliceP = d.hourly.precipitation_probability.slice(idx, end).map(p => p == null ? 0 : p);
+    const maxRain = Math.max.apply(null, sliceP);
+    let sum = 'Самое тёплое — ' + new Date(d.hourly.time[idx+maxI]).getHours() + ':00 (' + Math.round(maxT) + '°). ';
+    sum += maxRain >= 60 ? '☔ Возможны осадки — возьми зонт!' : maxRain >= 30 ? '🌦 Небольшая вероятность осадков.' : '😎 Без осадков!';
+    document.getElementById('detailSummary').textContent = sum;
+
+    applyTheme(d);
+    cacheWeather();
+    hamsterSay(mascotWeatherKey(c));
+  } catch {
+    if (!showCachedWeather()) document.getElementById('temp').innerHTML = '<span class="error">📴 нет связи</span>';
+  }
+}
+
+function toggleDetail(){
+  const p = document.getElementById('detail'), card = document.getElementById('weatherCard');
+  const open = p.classList.toggle('open');
+  card.classList.toggle('open-state', open);
+}
+
+/* ============ 💱 Курсы ============ */
+async function loadRates(){
+  try {
+    const d = await (await fetch('https://www.cbr-xml-daily.ru/daily_json.js')).json();
+    const names = {USD:'💵 Доллар', EUR:'💶 Евро', CNY:'🇨🇳 Юань'};
+    let out = '';
+    for (const k in names){
+      const v = d.Valute[k], diff = v.Value - v.Previous;
+      out += '<div class="row"><span>' + names[k] + '</span><b>' + v.Value.toFixed(2) +
+             ' ₽' + (diff > 0 ? ' 🔺' : diff < 0 ? ' 🔻' : '') + '</b></div>';
+    }
+    document.getElementById('rates').innerHTML = out;
+  } catch { document.getElementById('rates').innerHTML = '<span class="error">нет связи</span>'; }
+}
+
+/* ============ 💬 Цитата ============ */
+function loadQuote(){
+  const q = QUOTES[Math.floor(Date.now()/86400000) % QUOTES.length];
+  document.getElementById('quote').textContent = q[0];
+  document.getElementById('qauthor').textContent = '— ' + q[1];
+}
+
+/* ============ ✅ Дела ============ */
+let tasks = JSON.parse(localStorage.getItem('arti_tasks') || '[]');
+function saveTasks(){ localStorage.setItem('arti_tasks', JSON.stringify(tasks)); }
+function renderTasks(){
+  document.getElementById('tasks').innerHTML = tasks.length ? tasks.map(function(t, i){
+    return '<div class="todo-item ' + (t.done?'done':'') + '">' +
+      '<input type="checkbox" ' + (t.done?'checked':'') + ' onchange="toggleTask(' + i + ')">' +
+      '<span>' + esc(t.text) + '</span>' +
+      '<button class="del" onclick="delTask(' + i + ')">✕</button></div>';
+  }).join('') : '<div class="sub">Пока пусто 😌 Добавь задачу!</div>';
+}
+function addTask(){
+  const inp = document.getElementById('taskInput');
+  if (!inp.value.trim()) return;
+  tasks.push({text: inp.value.trim(), done: false});
+  inp.value = ''; saveTasks(); renderTasks();
+}
+function toggleTask(i){ tasks[i].done = !tasks[i].done; saveTasks(); renderTasks(); }
+function delTask(i){ tasks.splice(i,1); saveTasks(); renderTasks(); }
+document.getElementById('taskInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+renderTasks();
+
+/* ============ 🗒 Заметки ============ */
+const NOTE_COLORS = ['#ffe28a','#a8e6cf','#ffb3ba','#c7ceea','#ffdac1','#b5ead7'];
+let notes = JSON.parse(localStorage.getItem('arti_notes') || '[]');
+function saveNotes(){ localStorage.setItem('arti_notes', JSON.stringify(notes)); }
+function renderNotes(){
+  document.getElementById('notes').innerHTML = notes.map(function(n, i){
+    return '<div class="sticker" style="background:' + n.color + ';--rot:' + n.rot + 'deg">' +
+           esc(n.text) + '<span class="nx" onclick="delNote(' + i + ')">✕</span></div>';
+  }).join('');
+}
+function addNote(){
+  const inp = document.getElementById('noteInput');
+  if (!inp.value.trim()) return;
+  notes.push({text: inp.value.trim(), color: NOTE_COLORS[notes.length % NOTE_COLORS.length], rot: (Math.random()*6-3).toFixed(1)});
+  inp.value = ''; saveNotes(); renderNotes();
+}
+function delNote(i){ notes.splice(i,1); saveNotes(); renderNotes(); }
+document.getElementById('noteInput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
+renderNotes();
+
+/* ============ ⏳ Счётчики ============ */
+function loadCountdowns(){
+  const now = new Date();
+  const ny = new Date(now.getFullYear() + 1, 0, 1);
+  document.getElementById('cdNat').textContent = Math.ceil((ny - now) / 86400000);
+  let pay = new Date(now); pay.setDate(25);
+  if (pay <= now) pay = new Date(now.getFullYear(), now.getMonth()+1, 25);
+  document.getElementById('cdPay').textContent = Math.ceil((pay - now) / 86400000);
+  const sat = (6 - now.getDay() + 7) % 7;
+  document.getElementById('cdWeekend').textContent = sat || 7;
+  document.getElementById('cdMessage').textContent =
+    now.getDay() >= 5 ? '🎉 Выходные рядом — выдохни!' :
+    sat <= 2 ? '💪 Финишная прямая недели!' : '🌱 Неделя идёт, всё по плану.';
+}
+loadCountdowns();
+
+/* ================================================================
+   🐹 ТИШКА 2.0 — куча возможностей для поддержания разговора
+   ================================================================ */
+let pets = parseInt(localStorage.getItem('arti_pets') || '0', 10);
+let feed = parseInt(localStorage.getItem('arti_feed') || '50', 10);
+let mood = localStorage.getItem('arti_mood') || 'радостный';
+let gameSecret = null; // активная игра «угадай число»
+let chatCount = parseInt(localStorage.getItem('arti_chats') || '0', 10);
+
+const hamsterEl = document.getElementById('hamster');
+const bubbleEl = document.getElementById('bubble');
+const logEl = document.getElementById('mascotLog');
+
+// Учитывает повторы: не повторять последние 3 фразы одной группы
+const lastSaid = { idle: [], joke: [], fact: [], reply: [], compliment: [], advice: [] };
+function smartPick(group, arr){
+  let v, tries = 0;
+  do { v = pick(arr); tries++; } while (lastSaid[group].includes(v) && tries < 12);
+  lastSaid[group].push(v);
+  if (lastSaid[group].length > 3) lastSaid[group].shift();
+  return v;
+}
+
+const IDLE = [
+  'Пи-пи! Я тут сижу в норке и слежу за курсом доллара. Очень серьёзно слежу.',
+  'Я тут волосы на клавиатуру не роняю — воспитанный хома!',
+  'Дремлю… усами шевелю… это и есть мой медитативный практикум.',
+  'Хочу трубочку из детского питания. Клубничную. Это не обсуждается 🍓',
+  'Щёки не пустые — в них запасы на 3 дня. Правильное планирование, ничего не скажешь!',
+  'Знаешь, чем хомяк отличается от философа? Философ думает о бытии, а я о семечках. Хотя нет, тоже о бытии.',
+  'Если долго смотреть в кормушку, кормушка начинает смотреть в тебя.',
+  'Я бы поучаствовал в беге в колесе, но у меня нет документов.',
+  'Погода за окном — материальна, а моя норка — идеальна.',
+  'Скажи «семечко» ещё раз. Мне нравится, как это звучит.',
+  'Иногда я думаю: а есть ли жизнь после обеда? Есть! Она называется «сладкий сон».',
+  'Мой терапевт говорит: «Тишка, выпусти пар». Но пар я выпускаю только в норке.'
+];
+const JOKES = [
+  'Заходит хомяк в бар. Бармен: «Что будешь?». Хомяк: «Всё».',
+  'Почему хомяки не пользуются ТикТоком? Потому что щёки и так набиты контентом!',
+  'Купил хомяк колесо. Теперь ищет, где бы прокатиться в жизни.',
+  'Хомяк — единственное существо, которое тащит всё в дом и дома сидит на всём этом подолгу.',
+  'Доктор, у меня провалы в памяти! — Когда начались? — Что начались?',
+  'Знаешь, почему я не качаюсь? Потому что я уже в форме… шарообразной.',
+  'Семечко спрашивает у семечка: «Ты куда?». — «В щёку, на хранение».',
+  'Программист-хомяк пишет: if (пусто) { защёчь(); }',
+  'Хомяк смотрел на снежинку и думал: «Красиво, но моё лучше — у меня тоже шесть щёк… то есть лап».',
+  'Что сказал хомяк, найдя полную кормушку? «Ну наконец-то кто-то с планом!»',
+  'Мой знак зодиака — Овен. Но я всё равно всё делаю по-хомячьи: медленно и с запасом.'
+];
+const FACTS = [
+  '🧠 У хомяков в щёках помещается до 20% собственного веса в еде. Вот это я понимаю — карманные резервы!',
+  '🧠 Хомяки видят только оттенки серого и зелёного. Зато семечки — во всех красках!',
+  '🧠 Сирийский хомяк может пробежать до 9 км за ночь в колесе. Я предпочитаю бегать от дел.',
+  '🧠 Новорождённый хомячок весит около 2 граммов — как две семечки!',
+  '🧠 Хомяки — одиночки по натуре, но мы прекрасные собеседники. Как я!',
+  '🧠 За всю жизнь хомяк делает около 1000 запасов. Это примерно как 1000 вкладок в браузере.',
+  '🧠 Хомяки спят 14 часов в сутки. Это не лень — это долгосрочное планирование энергии!',
+  '🧠 В Австралии хомяков запрещено держать как питомцев, чтобы они не «засорили» экосистему. Серьёзно, я не шучу!',
+  '🧠 У хомяков плохое зрение, но отличное обоняние. Я вижу суть — нюхом!'
+];
+const COMPLIMENTS = [
+  'У тебя сегодня особенно умный вид. Даже умнее моего корма-автоподатчика!',
+  'Ты лучший человек в моём дашборде. Хотя я редко кого здесь вижу, но всё равно!',
+  'Твои щёки… ой, то есть глаза — сияют! Продолжай в том же духе!',
+  'Когда ты открываешь этот дашборд, день становится ярче на 42%. Наука подтверждает.',
+  'Ты делаешь важные дела — я делаю запасы. Мы команда!',
+  'Ты великолепен! Даже больше, чем полный пищевой мешок!',
+  'С тобой любой день — погожий. Хомячья чуйка не ошибается.'
+];
+const ADVICE = [
+  '💡 Пей воду! Не газировку, а простую H₂O. Хомячья мудрость.',
+  '💡 Сделай одну маленькую задачу прямо сейчас. Серьёзно, прямо сейчас. Я подожду.',
+  '💡 Проветри комнату! Я за форточку, свежий воздух — святое дело.',
+  '💡 Встань, разомнись 2 минуты. Хомяк в колесе — тоже кардиолог.',
+  '💡 Улыбнись! Это бесплатно, а эффект — как от полноценной кормушки.',
+  '💡 Запиши мысль, которая тебя сейчас беспокоит. На бумажке. В «Заметках». Я подвинусь.',
+  '💡 Выключи уведомления на 20 минут. Мир подождёт, семечки — тем более.',
+  '💡 Съешь что-то полезное. Хотя бы одно. Я прикрыл глаза, честно.'
+];
+const HELLO = [
+  'Пи-пи! Рад видеть!',
+  'О, это ты! Приветствую, человек!',
+  'Привет! Я как раз подумывал о жизни, Вселенной и семечках.',
+  'Пи-пи-и! Заходи, не стесняйся.'
+];
+const THANKS = [
+  'Пожалуйста! Цена — одно семечко 🌰',
+  'Всегда пожалуйста, друг! Хомячья служба поддержки.',
+  'Не за что! Могу ещё чем-то помочь — просто попроси.',
+  'Рад помочь! Щёки от радости надулись.'
+];
+const BYE = [
+  'Уходишь? Ну ладно… я тут посижу. Приходи ещё!',
+  'Пока! Не забудь покормить хомяка по пути.',
+  'До встречи! Я буду тут в своей норке, ждать и делать запасы.'
+];
+const MONEY_TALK = [
+  'Деньги — тема! Я храню семечки в щеках, это мой «банк». Проценты — 0%, зато надёжно!',
+  'Курс валют меняется, а курс семечек — стабилен. Вкладывайтесь!',
+  'Если бы я разбирался в валюте, я бы жил в щеке от доллара.'
+];
+const TIME_TALK = [
+  'Время — понятие относительное. Для хомяка есть только «до еды» и «после еды».',
+  'Время вон наверху большими цифрами. А моё внутреннее — всегда «час семечек».',
+  'Не смотрим на часы, смотрим на дело! (Но я всё равно иногда подсматриваю.)'
+];
+const DEEP_TALK = [
+  'Философский вопрос: если семечко лежит в щеке, но никто не видит — оно ещё семечко?',
+  'Смысл жизни — в маленьких радостях. Например, в тёплой стружке и полном разделе «Дела».',
+  'Мы все — хомяки во вселенной. Кто-то собирает опыт, кто-то семечки. Оба варианта хороши.',
+  'Иногда самое мудрое решение — поспать. Моё второе имя — Мудрость.'
+];
+const MOODS_ABOUT = {
+  'радостный': 'Я в отличном настроении! Всё сверкает, как начищенная кормушка!',
+  'спокойный': 'Я спокоен. Зона хомяка, зона покоя.',
+  'голодный': 'Я немножко голодный… покорми меня, пожалуйста 🌰',
+  'философский': 'Сегодня я философствую. Бытие — это ли не щёки пустые и полные?',
+  'шустрый': 'Я шустрый сегодня! Могу пробежать колесо за тебя!'
+};
+const NAME_LINES = [
+  'Меня зовут Тишка! Имя дали в честь тихих щелчков семечек.',
+  'Тишка — это я! Т-и-ш-к-а. Хотя когда я ем — совсем не тихий.'
+];
+const ARTI_LINES = [
+  'Арти — это, конечно, не столица, но у нас тут свой характер!',
+  'Пгт Арти — родные края. Здесь мои корни, моя норка и мои запасы.'
+];
+
+function petStats(){
+  document.getElementById('petCount').textContent = '❤️ Поглаживаний: ' + pets + ' · 🌾 Сытость: ' + feed + '% · 😊 Настроение: ' + mood;
+}
+
+function hamsterSay(text){
+  if (!text) return;
+  bubbleEl.innerHTML = '<b>Тишка:</b> ' + esc(text);
+  const row = document.createElement('div');
+  row.className = 'mlog-row';
+  row.textContent = text;
+  logEl.insertBefore(row, logEl.firstChild);
+  while (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
+}
+function userSay(text){
+  const row = document.createElement('div');
+  row.className = 'mlog-row';
+  row.innerHTML = '<b>Ты:</b> ' + esc(text);
+  logEl.insertBefore(row, logEl.firstChild);
+}
+
+function mascotWeatherKey(c){
+  const code = c.weather_code, t = safeRound(c.temperature_2m);
+  if (code >= 95) return '⚡ Гроза, ' + t + '°?! Я свернулся в клубочек, лапки закрыл! Через сутки вылезу.';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return '❄️ Снег, ' + t + '°! Слепим снежного хомяка? Я уже выкопал форму!';
+  if (code >= 51) return '🌧 Дождь, ' + t + '°… Даже семечки промокли. Возьми зонт — я в щеке его не унесу!';
+  if (code <= 1) return (c.is_day ? '☀️' : '🌙') + ' Ясно, ' + t + '° — красота! Идеально, чтобы выглядывать из норки на минутку.';
+  return '☁️ Облачно, ' + t + '°. Самое время за чаем с печеньем!';
+}
+function mascotTimeGreeting(){
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return '🌅 Доброе утро, человек! Хомяки встают раньше всех — и гордимся этим.';
+  if (h >= 11 && h < 17) return '☀️ Добрый день! Самое время для великих дел или второго завтрака.';
+  if (h >= 17 && h < 22) return '🌆 Добрый вечер! Разберите дела, потом — отдых. Так хомячий план!';
+  return '🌙 Э, не спится? Я как раз ночью бодрый — посадим ночную вахту вместе!';
+}
+
+/* Мини-игра «угадай число» */
+function gameGuess(){
+  if (gameSecret === null){
+    gameSecret = { value: rnd(100) + 1, attempts: 0 };
+    return '🎲 Я загадал число от 1 до 100! Пиши варианты в чат — угадаешь за сколько попыток? Пиши «стоп», чтобы сдаться.';
+  }
+  return '🎲 Игра уже идёт! Я загадал число от 1 до 100. Твой вариант? (или «стоп» — сдаться)';
+}
+function gameGuessAttempt(num){
+  gameSecret.attempts++;
+  if (num === gameSecret.value){
+    const n = gameSecret.attempts;
+    gameSecret = null;
+    return '🎉 Ура, ' + n + ' попыток — ты угадал число ' + num + '! Я немножко впечатлён… где мой приз-семечко?';
+  }
+  if (num < gameSecret.value) return '⬆️ Больше! Попытка №' + gameSecret.attempts + '.';
+  return '⬇️ Меньше! Попытка №' + gameSecret.attempts + '.';
+}
+
+/* Действия по кнопкам */
+function hamsterAction(a){
+  if (a === 'joke'){ hamsterSay(smartPick('joke', JOKES)); }
+  else if (a === 'fact'){ hamsterSay(smartPick('fact', FACTS)); }
+  else if (a === 'compliment'){ hamsterSay(smartPick('compliment', COMPLIMENTS)); }
+  else if (a === 'advice'){ hamsterSay(smartPick('advice', ADVICE)); }
+  else if (a === 'game'){ hamsterSay(gameGuess()); }
+  else if (a === 'coin'){
+    const isHeads = Math.random() < .5;
+    hamsterSay('🪙 ' + (isHeads ? 'Орёл! Хомячья логика говорит: делай!' : 'Решка! Хомячья логика говорит: обдумай ещё разочек.'));
+  }
+  else if (a === 'feed'){
+    feed = Math.min(100, feed + 15);
+    localStorage.setItem('arti_feed', feed);
+    hamsterEl.classList.remove('eat','dance'); void hamsterEl.offsetWidth; hamsterEl.classList.add('eat');
+    if (feed >= 95) hamsterSay('Хрум-хрум 🌰 Я сыт, как никогда! Теперь можно и пофилософствовать.');
+    else hamsterSay('Хрум-хрум 🌰 Спасибо за еду! Сытость: ' + feed + '%.');
+    if (feed >= 60 && mood === 'голодный'){ mood = 'радостный'; localStorage.setItem('arti_mood', mood); }
+    petStats();
+  }
+}
+
+/* Чат с Тишкой — куча тем */
+function askMascot(){
+  const inp = document.getElementById('mascotInput');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+  userSay(q);
+  chatCount++;
+  localStorage.setItem('arti_chats', chatCount);
+  const lq = q.toLowerCase();
+  const w = lastWeather && lastWeather.current;
+
+  // Активная игра
+  if (gameSecret !== null){
+    if (/^(стоп|сдаюсь|не знаю)/.test(lq)){
+      const ans = gameSecret.value;
+      gameSecret = null;
+      hamsterSay('😏 Я загадал ' + ans + '. Не расстраивайся — вот ещё попытка позже!');
+      return;
+    }
+    const num = parseInt(q, 10);
+    if (!isNaN(num)){
+      hamsterSay(gameGuessAttempt(num));
+      return;
+    }
+  }
+
+  let reply;
+  if (w && /погод|температ|холод|тепл|дождь|снег|зонт/.test(lq)) reply = mascotWeatherKey(w);
+  else if (/курс|доллар|валют|рубл|деньг|зарплат/.test(lq)) reply = smartPick('reply', MONEY_TALK);
+  else if (/врем|час|минут/.test(lq)) reply = smartPick('reply', TIME_TALK);
+  else if (/дел|задач|todo|работ|устал|лен/.test(lq)){
+    const undone = tasks.filter(t => !t.done).length;
+    reply = undone > 0
+      ? '📝 У тебя ' + undone + ' незакрытых задач. Начни с самой маленькой — я бы подсказал, но у меня лапки.'
+      : '📝 Все дела закрыты! Праздник! Танцуй со мной 💃';
+  }
+  else if (/анекдот|шутк|смеш|рассмеши/.test(lq)) reply = smartPick('joke', JOKES);
+  else if (/факт|интересн|расскажи|знаешь ли ты/.test(lq)) reply = smartPick('fact', FACTS);
+  else if (/совет|что .*делать|помог|подскаж/.test(lq)) reply = smartPick('advice', ADVICE);
+  else if (/комплимент|похвал|умн|красив|молодец/.test(lq)) reply = smartPick('compliment', COMPLIMENTS);
+  else if (/игр|угад|числ|кости/.test(lq)) reply = gameGuess();
+  else if (/монет|орел|решк/.test(lq)) hamsterAction('coin');
+  else if (/кто ты|ты кто|как теб зовут|имя/.test(lq)) reply = pick(NAME_LINES);
+  else if (/арти|город|поселок|дом/.test(lq)) reply = pick(ARTI_LINES);
+  else if (/как дела|как ты|настро/.test(lq)) reply = (MOODS_ABOUT[mood] || 'Я в норме!') + ' А ты как?';
+  else if (/привет|здравств|хай|доброе утро|добрый день|добрый вечер/.test(lq)) reply = pick(HELLO);
+  else if (/спасиб|благодар/.test(lq)) reply = pick(THANKS);
+  else if (/пока|до свид|бай|уходишь/.test(lq)) reply = pick(BYE);
+  else if (/смысл|жизн|зачем|почему мы|люби/.test(lq)) reply = smartPick('reply', DEEP_TALK);
+  else if (/давай|погнали|начнем|ок|хорошо/.test(lq)) reply = 'Пи-пи! Начинаем! Ты — голова, я — щёки (то есть хранилище идей).💡';
+  else if (/не хочу|bad mood|груст|печаль|тоск/.test(lq)){
+    reply = smartPick('compliment', COMPLIMENTS) + ' А ещё вот тебе совет: ' + smartPick('advice', ADVICE);
+  }
+  else if (/семечк|еда|кушать|голод/.test(lq)){
+    reply = feed < 50 ? 'Семечки — святое! Покорми меня кнопочкой 🌰, сытость всего ' + feed + '%.' : 'Семечки — высшая форма искусства. Ще-у-си-тость: ' + feed + '%. Всё под контролем.';
+  }
+  else reply = smartPick('reply', [
+    'Пи-пи, интересная мысль! Расскажи подробнее — я весь во внимании (ушки направлены на тебя).',
+    'Глубоко! А знаешь, что я думаю? ' + smartPick('reply', DEEP_TALK),
+    'Хм, не совсем понял, но я согласен на 87%. Остальные 13% — в пользу семечек 🌰',
+    'Занятный вопрос! Вот тебе факт вдогонку: ' + smartPick('fact', FACTS),
+    'Записал лапкой ✍️ Держи в ответ что-нибудь светлое: ' + smartPick('compliment', COMPLIMENTS),
+    'А мне нравится, как ты думаешь! Давай ещё — я в теме от и до (ну, почти).',
+    'Могу предложить поиграть! Нажми «🎲 Игра в число» — стандартная хомячья забава.',
+    'Слушай, а потрогай меня! Я тактильный 🐾 (кликни по хоме)',
+    'Не уверен, что понял. Попробуй спросить про погоду, курс, время, дела — или попроси анекдот! 😄'
+  ]);
+  setTimeout(function(){ hamsterSay(reply); }, 400 + rnd(600));
+}
+
+/* Клик по хоме */
+hamsterEl.addEventListener('click', function(){
+  hamsterEl.classList.remove('eat','dance');
+  void hamsterEl.offsetWidth;
+  pets++; localStorage.setItem('arti_pets', pets);
+  if (Math.random() < .5){
+    hamsterEl.classList.add('eat');
+    feed = Math.min(100, feed + 5);
+    localStorage.setItem('arti_feed', feed);
+    hamsterSay(pick(['Хрум-хрум 🌰 Merci за семечку!', 'Хрум-хрум! Это лучший момент дня.', 'Ням-ням! Запасы пополнены.']));
+    if (feed >= 60 && mood === 'голодный'){ mood = 'радостный'; localStorage.setItem('arti_mood', mood); }
+  } else {
+    hamsterEl.classList.add('dance');
+    hamsterSay(pick(['Пи-пи-пи! 💃 Танец щёк!', 'Улетаю в танце! Лапки — крылья!', 'Вот это я зажёг в колесе! 🔥']));
+  }
+  petStats();
+  if (pets === 50) hamsterSay('50 поглаживаний! Я работаю над хомячьей медалью 🏅');
+  if (pets === 100) hamsterSay('СТО ПОГЛАЖИВАНИЙ! Я официальный талисман дашборда 🏆');
+  if (pets === 500) hamsterSay('500?! Ты, наверное, самый частый кликатель хомяков. Уважение! 🫡');
+});
+
+/* Обновление настроения: если сытость низкая — хомяк голодный */
+function checkMood(){
+  let m = mood;
+  if (feed < 35) m = 'голодный';
+  else if (feed > 85 && m === 'голодный') m = 'радостный';
+  if (m !== mood){ mood = m; localStorage.setItem('arti_mood', mood); }
+}
+checkMood();
+petStats();
+
+/* Болтает сам: реплики + смена настроения */
+setInterval(function(){
+  checkMood();
+  if (Math.random() < .5) hamsterSay(smartPick('idle', IDLE));
+}, 90000);
+
+/* ============ Запуск ============ */
+applyTheme(null);
+setTimeout(function(){ hamsterSay(mascotTimeGreeting()); }, 1500);
+let lastUpdate = 0;
+if (!navigator.onLine) showCachedWeather();
+async function loadAll(){
+  await Promise.all([loadWeather(), loadRates(), loadQuote()]);
+  lastUpdate = Date.now();
+  document.getElementById('updated').textContent = '🔄 Обновлено: ' + timeAgo(lastUpdate);
+}
+loadAll();
+setInterval(loadAll, 15 * 60 * 1000);
+setInterval(function(){
+  if (lastUpdate) document.getElementById('updated').textContent = '🔄 Обновлено: ' + timeAgo(lastUpdate);
+}, 30000);
+
+/* ============ 📱 PWA: Service Worker (работает на HTTPS-хостинге) ============ */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  navigator.serviceWorker.register('sw.js').catch(function(){ /* при открытии с диска — просто skip */ });
+}
+</script>
+</body>
+</html>
